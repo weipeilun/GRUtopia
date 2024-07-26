@@ -25,7 +25,7 @@ robot_name = env.config.tasks[0].robots[0].name
 path = [(1.0, 0.0, 0.0), (1.0, 1.0, 0.0), (3.0, 4.0, 0.0)]
 i = 0
 
-move_action = {'move_alongç_path': [path]}
+move_action = {'move_along_path': [path]}
 rotate_action = {'rotate': [euler_angles_to_quat(np.array([0, 0, np.pi]))]}
 path_finished = False
 actions = {'h1': move_action}
