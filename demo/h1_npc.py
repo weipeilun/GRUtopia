@@ -2,7 +2,7 @@ from grutopia.core.config import SimulatorConfig
 from grutopia.core.datahub.web_ui_api import clear as webui_clear
 from grutopia.core.env import BaseEnv
 
-file_path = './demo/configs/h1_npc.yaml'
+file_path = './GRUtopia/demo/configs/h1_npc.yaml'
 sim_config = SimulatorConfig(file_path)
 
 env = BaseEnv(sim_config, headless=True, webrtc=True)
