@@ -16,4 +16,4 @@ class ControllerParams(BaseModel):
     # Planner controller
     planner: Optional[str]  # for planning policy.
     model: Optional[str]  # for planning policy model
-    model_path: Optional[str]  # for planning policy, weight path of model
+    # model_path: Optional[str]  # for planning policy, weight path of model

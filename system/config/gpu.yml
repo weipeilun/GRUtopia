@@ -1,0 +1,4 @@
+default_torch_device: 1
+default_tensorflow_device: 0
+default_paddle_device: 0
+default_onnx_device: 0

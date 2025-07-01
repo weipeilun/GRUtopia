@@ -29,8 +29,8 @@ class Camera(BaseSensor):
         # Initialize the default resolution for the camera
         size = (320, 240)
         # Use the configured camera size if provided.
-        if self.config.size is not None:
-            size = self.config.size
+        if self.config.resolution_x is not None and self.config.resolution_y is not None:
+            size = (self.config.resolution_x, self.config.resolution_y)
 
         prim_path = self._robot.user_config.prim_path + '/' + self.config.prim_path
         log.debug('camera_prim_path: ' + prim_path)

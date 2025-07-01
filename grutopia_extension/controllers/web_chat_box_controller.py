@@ -40,7 +40,7 @@ class WebChatboxController(BaseController):
         send_chat_control(nickname=self._nickname, text=text, img='', role=self._role)
         return ArticulationAction()
 
-    def get_obs(self) -> Dict[str, Any]:
+    def get_obs(self, *args, **kwargs) -> Dict[str, Any]:
         chat_control = get_chat_control()
         log_data = get_log_data()
         if chat_control is not None:

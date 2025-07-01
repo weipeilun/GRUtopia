@@ -1,7 +1,7 @@
 # Developer only. User read-only.
 robots:
 - type: "HumanoidRobot"
-  usd_path: "GRUtopia/assets/robots/h1/h1.usd"
+  usd_path: "GRUtopia/assets/robots/h1/h1_modify.usd"
   gains: [0.0, 0.0]
   joint_names:
   - left_hip_yaw_joint
@@ -96,12 +96,27 @@ robots:
     lateral_speed: 1.0
     sub_controllers:
     - name: move_by_speed
-  - name: web_chat
+  - name: "web_chat"
     type: WebChatboxController
+  - name: "random_move"
+    type: HumanoidRandomMoveController
+    policy_weights_path: "GRUtopia/output/sim_robot_rl_model/tmp/models"
+    policy_weights_iter: "500"
+  - name: "train_ppo"
+    type: TrainPPOController
   sensors:
-  - name: "camera"
+  - name: "left_eye_camera"
     type: "Camera"
-    prim_path: "logo_link/Camera"
-  - name: "tp_camera"
+    prim_path: "logo_link/left_eye_camera"
+    resolution_x: 1024
+    resolution_y: 768
+  - name: "right_eye_camera"
     type: "Camera"
-    prim_path: "torso_link/TPCamera"
+    prim_path: "logo_link/right_eye_camera"
+    resolution_x: 1024
+    resolution_y: 768
+  - name: "sky_camera"
+    type: "Camera"
+    prim_path: "SkyCamera"
+    resolution_x: 1024
+    resolution_y: 768

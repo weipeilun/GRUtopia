@@ -27,7 +27,7 @@ class NPC:
                                                                            robot=npc,
                                                                            scene=None,
                                                                            npc=True)
-        self.caller = LLMCaller(config.scene_data_path, config.max_interaction_turn, config.model_name,
+        self.caller = LLMCaller(config.scene_data_path, config.max_interaction_turn, config.llm_model_name,
                                 config.openai_api_key, config.api_base_url)
         self.processed_user_message = 0
         self.thread = Thread(target=run_llm_caller, args=(self.caller, ))

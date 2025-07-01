@@ -20,6 +20,25 @@ class Env(BaseModel):
     bg_type: Union[str, None] = None
     bg_path: Optional[str]
 
+    save_dataset: bool
+    force_override: Optional[bool]
+    dataset_path: Optional[str]
+    repo_id: Optional[str]
+    observation_dim: Optional[int]
+    privileged_obs_shape: Optional[int]
+    observation_history_dim: Optional[int]
+    num_actions: Optional[int]
+    device: Optional[str]
+    episode_length_s: Optional[int]
+    robot_per_inference_frames: Optional[int]
+    return_eye_image: Optional[bool]
+    num_observation_history: Optional[int]
+    reward_container_name: Optional[str]
+    record_video: Optional[bool]
+    save_video_interval: Optional[int]
+    
+    teleoperate_server: bool = False
+
 
 class SimConfig(BaseModel):
     """

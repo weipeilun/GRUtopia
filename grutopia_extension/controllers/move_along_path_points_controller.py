@@ -81,7 +81,7 @@ class MoveAlongPathPointsController(BaseController):
                             rotation_speed=self.rotation_speed,
                             threshold=self.threshold * self.robot.get_robot_scale()[0])
 
-    def get_obs(self) -> Dict[str, Any]:
+    def get_obs(self, *args, **kwargs) -> Dict[str, Any]:
         finished = False
         total_points = len(self.path_points)
         if total_points > 0 and self.path_point_idx == total_points - 1:

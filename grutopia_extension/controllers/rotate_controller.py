@@ -72,7 +72,7 @@ class RotateController(BaseController):
                             rotation_speed=self.rotation_speed,
                             threshold=self.threshold)
 
-    def get_obs(self) -> Dict[str, Any]:
+    def get_obs(self, *args, **kwargs) -> Dict[str, Any]:
         if self.goal_orientation is None or self.threshold is None:
             return {}
         start_orientation = self.robot.get_world_pose()[1]

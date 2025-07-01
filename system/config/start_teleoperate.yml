@@ -1,0 +1,6 @@
+processors: [
+    isaac_sim,
+    video_server,
+    # test,
+    # mock,
+]

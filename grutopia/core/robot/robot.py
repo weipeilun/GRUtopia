@@ -18,6 +18,7 @@ class BaseRobot:
     def __init__(self, config: RobotUserConfig, robot_model: RobotModel, scene: Scene):
         self.name = config.name
         self.robot_model = robot_model
+        self.scene = scene
         self.user_config = config
         self.isaac_robot: IsaacRobot | None = None
         self.controllers = {}
@@ -135,9 +136,9 @@ def create_robots(config: TaskUserConfig, robot_models: RobotModels, scene: Scen
         if robot.type not in BaseRobot.robots:
             raise KeyError(f'unknown robot type "{robot.type}"')
         robot_cls = BaseRobot.robots[robot.type]
-        robot_models = robot_models.robots
+        robot_list = robot_models.robots
         r_model = None
-        for model in robot_models:
+        for model in robot_list:
             if model.type == robot.type:
                 r_model = model
         if r_model is None:

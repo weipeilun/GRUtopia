@@ -15,6 +15,8 @@ class SensorModel(BaseModel):
     enable: Optional[bool] = True
     size: Optional[Tuple[int, int]]  # Camera only
     scan_rate: Optional[int]  # RPS. Lidar only
+    resolution_x: Optional[int] = 128  # Resolution. Camera only
+    resolution_y: Optional[int] = 128  # Resolution. Camera only
 
 
 class ControllerModel(BaseModel):
@@ -32,6 +34,7 @@ class ControllerModel(BaseModel):
     lateral_speed: Optional[float]
     threshold: Optional[float]
     policy_weights_path: Optional[str]
+    policy_weights_iter: Optional[str]
 
     map_data_path: Optional[str]  # navi only, npy BOG (binary occupancy grid) file
     reference: Optional[str]  # ik only, world/robot/arm_base, default to world

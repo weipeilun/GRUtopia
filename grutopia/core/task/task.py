@@ -62,7 +62,7 @@ class BaseTask(OmniBaseTask, ABC):
         self._scene = scene
         self.load()
 
-    def get_observations(self) -> Dict[str, Any]:
+    def get_observations(self, training=False) -> Dict[str, Any]:
         """
         Returns current observations from the objects needed for the behavioral layer.
 
@@ -74,13 +74,19 @@ class BaseTask(OmniBaseTask, ABC):
         obs = {}
         for robot_name, robot in self.robots.items():
             try:
-                obs[robot_name] = robot.get_obs()
+                obs[robot_name] = robot.get_obs(training=training)
             except Exception as e:
                 log.error(self.name)
                 log.error(e)
                 traceback.print_exc()
                 return {}
         return obs
+
+    def get_video_frame(self, video_frame):
+        for robot_name, robot in self.robots.items():
+            frame = robot.get_video_frame()
+            if frame is not None:
+                video_frame[robot_name].append(frame)
 
     def update_metrics(self):
         for _, metric in self.metrics.items():
@@ -103,7 +109,7 @@ class BaseTask(OmniBaseTask, ABC):
         """
         raise NotImplementedError
 
-    def individual_reset(self):
+    def individual_reset(self, robot_name):
         """
         reload this task individually without reloading whole world.
         """

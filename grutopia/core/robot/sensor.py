@@ -100,6 +100,9 @@ def create_sensors(config: RobotUserConfig, robot_model: RobotModel, robot: Base
     if robot_model.sensors is not None:
         available_sensors = {a.name: a for a in robot_model.sensors}
         for sensor_name, sensor in available_sensors.items():
+            # added by weipeilun
+            if not config.return_eye_image and sensor_name in ('left_eye_camera', 'right_eye_camera'):
+                continue
             if sensor.type not in BaseSensor.sensors:
                 raise KeyError(f'unknown sensor type "{sensor.type}"')
             sensor_cls = BaseSensor.sensors[sensor.type]

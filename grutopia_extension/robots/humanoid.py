@@ -1,4 +1,6 @@
 import os
+import cv2
+import time
 from typing import Dict
 
 import numpy as np
@@ -10,8 +12,30 @@ from omni.isaac.core.scenes import Scene
 from omni.isaac.core.utils.nucleus import get_assets_root_path
 from omni.isaac.core.utils.stage import add_reference_to_stage
 from omni.isaac.core.utils.types import ArticulationAction, ArticulationActions
+from omni.isaac.sensor import Camera
+from pxr import PhysxSchema, UsdPhysics
 
 import grutopia.core.util.string as string_utils
+import grutopia.core.util.math as math_utils
+from grutopia.core.constants import (
+    OBSERVATION_IMAGE_LEFT_KEY,
+    OBSERVATION_IMAGE_RIGHT_KEY,
+    OBSERVATION_GRAVITY_KEY,
+    OBSERVATION_BASE_LIN_VEL_KEY,
+    OBSERVATION_BASE_ANG_VEL_KEY,
+    OBSERVATION_JOINT_POS_KEY,
+    OBSERVATION_JOINT_VEL_KEY,
+    OBSERVATION_RELATIVE_BASE_HEIGHT_KEY,
+    OBSERVATION_LEFT_ANKLE_WORLD_POS_KEY,
+    OBSERVATION_RIGHT_ANKLE_WORLD_POS_KEY,
+    OBSERVATION_LEFT_ANKLE_POS_KEY,
+    OBSERVATION_RIGHT_ANKLE_POS_KEY,
+    OBSERVATION_LEFT_ANKLE_COLLISION_KEY,
+    OBSERVATION_RIGHT_ANKLE_COLLISION_KEY,
+    OBSERVATION_RIGHT_ANKLE_POS_KEY,
+    OBSERVATION_LEFT_ANKLE_COLLISION_KEY,
+    OBSERVATION_RIGHT_ANKLE_COLLISION_KEY,
+)
 from grutopia.actuators import ActuatorBase, ActuatorBaseCfg, DCMotorCfg
 from grutopia.core.config.robot import RobotUserConfig as Config
 from grutopia.core.robot.robot import BaseRobot
@@ -124,7 +148,10 @@ class Humanoid(IsaacRobot):
         name = 'base_legs'
         actuator = self.actuators[name]
 
-        control_joint_pos = torch.tensor(control_action.joint_positions, dtype=torch.float32)
+        if isinstance(control_action.joint_positions, torch.Tensor):
+            control_joint_pos = control_action.joint_positions.clone().detach()
+        else:
+            control_joint_pos = torch.tensor(control_action.joint_positions, dtype=torch.float32)
         control_actions = ArticulationActions(
             joint_positions=control_joint_pos,
             joint_velocities=torch.zeros_like(control_joint_pos),
@@ -180,18 +207,18 @@ class HumanoidRobot(BaseRobot):
         log.debug(f'humanoid {config.name}: position    : ' + str(self._start_position))
         log.debug(f'humanoid {config.name}: orientation : ' + str(self._start_orientation))
 
-        usd_path = robot_model.usd_path
-        if usd_path.startswith('/Isaac'):
-            usd_path = get_assets_root_path() + usd_path
+        self.usd_path = robot_model.usd_path
+        if self.usd_path.startswith('/Isaac'):
+            self.usd_path = get_assets_root_path() + self.usd_path
 
-        log.debug(f'humanoid {config.name}: usd_path         : ' + str(usd_path))
+        log.debug(f'humanoid {config.name}: self.usd_path         : ' + str(self.usd_path))
         log.debug(f'humanoid {config.name}: config.prim_path : ' + str(config.prim_path))
         self.isaac_robot = Humanoid(
             prim_path=config.prim_path,
             name=config.name,
             position=self._start_position,
             orientation=self._start_orientation,
-            usd_path=usd_path,
+            usd_path=self.usd_path,
         )
 
         if robot_model.joint_names is not None:
@@ -201,6 +228,8 @@ class HumanoidRobot(BaseRobot):
         if config.scale is not None:
             self._robot_scale = np.array(config.scale)
             self.isaac_robot.set_local_scale(self._robot_scale)
+        # self.isaac_robot_world_velocity = self.isaac_robot.get_world_velocity()
+        self.isaac_robot_world_pose = self.isaac_robot.get_world_pose()
 
         self._robot_ik_base = None
 
@@ -208,12 +237,49 @@ class HumanoidRobot(BaseRobot):
         self._robot_right_ankle = RigidPrim(prim_path=config.prim_path + '/right_ankle_link', name=config.name + 'right_ankle')
         self._robot_left_ankle = RigidPrim(prim_path=config.prim_path + '/left_ankle_link', name=config.name + 'left_ankle')
 
+        # detect collision with ground
+        left_ankle_prim = scene.stage.GetPrimAtPath(config.prim_path + '/left_ankle_link')
+        UsdPhysics.CollisionAPI.Apply(left_ankle_prim)
+        PhysxSchema.PhysxTriggerAPI.Apply(left_ankle_prim)
+        self.left_ankle_collision_api = PhysxSchema.PhysxTriggerStateAPI.Apply(left_ankle_prim)
+        right_ankle_prim = scene.stage.GetPrimAtPath(config.prim_path + '/right_ankle_link')
+        UsdPhysics.CollisionAPI.Apply(right_ankle_prim)
+        PhysxSchema.PhysxTriggerAPI.Apply(right_ankle_prim)
+        self.right_ankle_collision_api = PhysxSchema.PhysxTriggerStateAPI.Apply(right_ankle_prim)
+        self.ground_contact_prim_path = '/World/defaultGroundPlane/GroundPlane/CollisionPlane'
+
+        self.sensor_to_key_dict = {
+            'left_eye_camera': OBSERVATION_IMAGE_LEFT_KEY,
+            'right_eye_camera': OBSERVATION_IMAGE_RIGHT_KEY,
+        }
+        self.sky_camera_key = 'sky_camera'
+
+        self.default_frame_dict = dict()
+
     def post_reset(self):
         super().post_reset()
         self.isaac_robot._process_actuators_cfg()
         if self._gains is not None:
             self.isaac_robot.set_gains(self._gains)
 
+    def reset(self):
+        # self.isaac_robot = Humanoid(
+        #     prim_path=self.user_config.prim_path,
+        #     name=self.user_config.name,
+        #     position=self._start_position,
+        #     orientation=self._start_orientation,
+        #     usd_path=self.usd_path,
+        # )
+        # if self.user_config.scale is not None:
+        #     self._robot_scale = np.array(self.user_config.scale)
+        #     self.isaac_robot.set_local_scale(self._robot_scale)
+        self.isaac_robot._articulation_view.post_reset()
+        self.post_reset()
+        self.isaac_robot.post_reset()
+        self.isaac_robot.set_world_velocity(np.zeros(6, dtype=np.float32))
+        # self.isaac_robot.set_world_velocity(self.isaac_robot_world_velocity)
+        self.isaac_robot.set_world_pose(*self.isaac_robot_world_pose)
+        # self.joint_subset.set_joint_positions(np.zeros(len(self.joint_subset.joint_names), dtype=np.float32))
 
     def get_ankle_height(self):
         return np.min([self._robot_right_ankle.get_world_pose()[0][2], self._robot_left_ankle.get_world_pose()[0][2]])
@@ -243,18 +309,81 @@ class HumanoidRobot(BaseRobot):
             control = controller.action_to_control(controller_action)
             self.isaac_robot.apply_actuator_model(control, controller_name, self.joint_subset)
 
-    def get_obs(self):
-        position, orientation = self._robot_base.get_world_pose()
+    def is_contact_with_target(self, contact_list, target_prim_path):
+        for contact_path in contact_list:
+            if contact_path.pathString == target_prim_path:
+                return True
+        return False
 
-        # custom
-        obs = {
-            'position': position,
-            'orientation': orientation,
-        }
+    def get_obs(self, training=False):
+        # Get obs for policy.
+        base_pose_w = self._robot_base.get_world_pose()
+        base_quat_w = torch.tensor(base_pose_w[1], device='cpu', dtype=torch.float).reshape(1, -1)
+        base_lin_vel_w = torch.tensor(self._robot_base.get_linear_velocity(), device='cpu', dtype=torch.float).reshape(1, -1)
+        base_ang_vel_w = torch.tensor(self._robot_base.get_angular_velocity()[:], device='cpu', dtype=torch.float).reshape(1, -1)
+        base_lin_vel = np.array(math_utils.quat_rotate_inverse(base_quat_w, base_lin_vel_w).reshape(-1))
+        base_ang_vel = np.array(math_utils.quat_rotate_inverse(base_quat_w, base_ang_vel_w).reshape(-1))
+        base_ang_vel = base_ang_vel * np.pi / 180.0
+        
+        projected_gravity = torch.tensor([[0., 0., -1.]], device='cpu', dtype=torch.float)
+        projected_gravity = np.array(math_utils.quat_rotate_inverse(base_quat_w, projected_gravity).reshape(-1))
+        joint_pos = self.joint_subset.get_joint_positions(
+        ) if self.joint_subset is not None else self.isaac_robot.get_joint_positions()
+        joint_vel = self.joint_subset.get_joint_velocities(
+        ) if self.joint_subset is not None else self.isaac_robot.get_joint_velocities()
 
+        base_height = base_pose_w[0][2]
+        ankle_height = self.get_ankle_height()
+        relative_base_height = np.array([base_height - ankle_height])
+
+        obs = dict()
+        obs[OBSERVATION_GRAVITY_KEY] = projected_gravity
+        obs[OBSERVATION_BASE_LIN_VEL_KEY] = base_lin_vel
+        obs[OBSERVATION_BASE_ANG_VEL_KEY] = base_ang_vel
+        obs[OBSERVATION_JOINT_POS_KEY] = joint_pos
+        obs[OBSERVATION_JOINT_VEL_KEY] = joint_vel
+        obs[OBSERVATION_RELATIVE_BASE_HEIGHT_KEY] = relative_base_height
+
+        if training:
+            # ankle positions
+            left_ankle_world_pos = torch.tensor(self._robot_left_ankle.get_world_pose()[0], device='cpu', dtype=torch.float)
+            left_ankle_pos = np.array(math_utils.quat_rotate(base_quat_w, left_ankle_world_pos).squeeze(0))
+            right_ankle_world_pos = torch.tensor(self._robot_right_ankle.get_world_pose()[0], device='cpu', dtype=torch.float)
+            right_ankle_pos = np.array(math_utils.quat_rotate(base_quat_w, right_ankle_world_pos).squeeze(0))
+            obs[OBSERVATION_LEFT_ANKLE_WORLD_POS_KEY] = left_ankle_world_pos
+            obs[OBSERVATION_RIGHT_ANKLE_WORLD_POS_KEY] = right_ankle_world_pos
+            obs[OBSERVATION_LEFT_ANKLE_POS_KEY] = left_ankle_pos
+            obs[OBSERVATION_RIGHT_ANKLE_POS_KEY] = right_ankle_pos
+
+            # detect foot collision with ground
+            left_collision_list = self.left_ankle_collision_api.GetTriggeredCollisionsRel().GetTargets()
+            left_foot_collision_with_ground = torch.tensor([self.is_contact_with_target(left_collision_list, self.ground_contact_prim_path)], device='cpu', dtype=torch.bool)
+            right_collision_list = self.right_ankle_collision_api.GetTriggeredCollisionsRel().GetTargets()
+            right_foot_collision_with_ground = torch.tensor([self.is_contact_with_target(right_collision_list, self.ground_contact_prim_path)], device='cpu', dtype=torch.bool)
+            obs[OBSERVATION_LEFT_ANKLE_COLLISION_KEY] = left_foot_collision_with_ground
+            obs[OBSERVATION_RIGHT_ANKLE_COLLISION_KEY] = right_foot_collision_with_ground
+        
         # common
         for c_obs_name, controller_obs in self.controllers.items():
-            obs[c_obs_name] = controller_obs.get_obs()
+            obs[c_obs_name] = controller_obs.get_obs(training=training)
         for sensor_name, sensor_obs in self.sensors.items():
-            obs[sensor_name] = sensor_obs.get_data()
+            if self.user_config.return_eye_image and sensor_name in self.sensor_to_key_dict:
+                obs[self.sensor_to_key_dict[sensor_name]] = self.get_camera_frame_default(sensor_name, sensor_obs)
         return obs
+
+    def get_video_frame(self):
+        for sensor_name, sensor_obs in self.sensors.items():
+            if sensor_name == self.sky_camera_key:
+                return self.get_camera_frame_default(sensor_name, sensor_obs)
+        return None
+    
+    def get_camera_frame_default(self, sensor_name, sensor_obs):
+        if sensor_name not in self.default_frame_dict:
+            if sensor_obs.config.resolution_x is not None and sensor_obs.config.resolution_y is not None:
+                resolution = (sensor_obs.config.resolution_y, sensor_obs.config.resolution_x, 3)
+            else:
+                resolution = (128, 128, 3)
+            self.default_frame_dict[sensor_name] = np.zeros((*resolution, 3), dtype=np.uint8)
+            
+        sensor_data = sensor_obs.get_data()
+        return sensor_data['rgba'][:, :, :3] if 'rgba' in sensor_data and sensor_data['rgba'].dtype == np.uint8 else self.default_frame_dict[sensor_name]

@@ -35,3 +35,6 @@ class TaskUserConfig(BaseModel, extra=Extra.allow):
 
     # id
     env_id: int = 0
+    
+    # robot_models config file path
+    robot_models_file_path: str = None

@@ -113,7 +113,7 @@ class MoveToPointBySpeedController(BaseController):
                             rotation_speed=self.rotation_speed,
                             threshold=self.threshold * self.robot.get_robot_scale()[0])
 
-    def get_obs(self) -> Dict[str, Any]:
+    def get_obs(self, *args, **kwargs) -> Dict[str, Any]:
         if self.goal_position is None or self.last_threshold is None:
             return {}
         start_position = self.robot.get_world_pose()[0]

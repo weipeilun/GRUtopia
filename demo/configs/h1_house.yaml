@@ -2,6 +2,9 @@ simulator:
   physics_dt: 1/240
   rendering_dt: 1/240
 
+env:
+  save_dataset: False
+
 tasks:
 - type: "SingleInferenceTask"
   name: "h1_house"
@@ -24,7 +27,9 @@ tasks:
     - name: "move_with_keyboard"
     - name: "web_chat"
     sensor_params:
-    - name: "camera"
+    - name: "left_eye_camera"
       enable: false
-    - name: "tp_camera"
+    - name: "web_chat"
+    sensor_params:
+    - name: "right_eye_camera"
       enable: false

@@ -54,7 +54,7 @@ class BaseController(Base, ABC):
         """
         raise NotImplementedError()
 
-    def get_obs(self) -> Dict[str, Any]:
+    def get_obs(self, *args, **kwargs) -> Dict[str, Any]:
         """Get observation of controller.
 
         Returns:
@@ -62,7 +62,7 @@ class BaseController(Base, ABC):
         """
         obs = {}
         for key, obs_ins in self._obs.items():
-            obs[key] = obs_ins.get_obs()
+            obs[key] = obs_ins.get_obs(*args, **kwargs)
         return obs
 
     @classmethod

@@ -21,4 +21,11 @@ with open(ROBOT_MODELS_PATH, 'r') as f:
 
 
 def init_robots(the_config: TaskUserConfig, scene: Scene) -> typing.Dict:
-    return create_robots(the_config, robot_models, scene)
+    if the_config.robot_models_file_path is not None:
+        with open(the_config.robot_models_file_path, 'r') as f:
+            user_models = yaml.load(f.read(), Loader=yaml.FullLoader)
+            # print(models)
+            user_robot_models = RobotModels(**user_models)
+        return create_robots(the_config, user_robot_models, scene)
+    else:
+        return create_robots(the_config, robot_models, scene)

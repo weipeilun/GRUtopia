@@ -1,0 +1,26 @@
+# in_source以zmq为源，in_queue以multiprocessing.Queue为源
+
+isaac_sim:
+  frequency: 30
+  task_config_file_path: demo/configs/h1_locomotion_inference.yaml
+  robot_config_file_path: grutopia_extension/robots/robot_models_teleoperate.yaml
+  output_cameras:
+    left_eye_camera: observation.images.left
+    right_eye_camera: observation.images.right
+  out_port: 6000
+
+video_server:
+  frequency: 30
+  in_queue: [ isaac_sim ]
+  out_port: 6001
+
+test:
+  frequency: 30
+  in_queue: [ mock ]
+  out_port: 16000
+
+mock:
+  frequency: 30
+  out_queue_shape: [1, 2, 768, 1024, 3]
+  out_queue_dtype: uint8
+  out_port: 16001
